@@ -19,3 +19,16 @@ Run `inverse.py` to obtain the admissible parameters. The code produces two outp
 Run `visualization.ipynb` to visualize the frequency plots of the admissible parameters. This notebook loads the files used in the manuscript:  
 - `admissible_thetas_data_<fig_pos>.npy`  
 - `admissible_thetas_total_<fig_pos>.npy`
+
+lyapunov_inv/
+├── data_generation_lyap.py
+├── inverse.py
+├── pinn_lyap.py
+├── surrogate.py
+├── visualization.ipynb
+├── requirements.txt
+├── README.md
+└── src/
+    ├── DM Presentation.pdf
+    ├── Final Draft_AI_for_Science_DMO.pdf
+    └── Poster_AIforScience.pdf
