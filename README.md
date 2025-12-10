@@ -22,24 +22,24 @@ Run `visualization.ipynb` to visualize the frequency plots of the admissible par
 
 lyapunov_inv/
 
-├── data_generation_lyap.py
+    ├── data_generation_lyap.py
 
-├── inverse.py
+    ├── inverse.py
 
-├── pinn_lyap.py
+    ├── pinn_lyap.py
 
-├── surrogate.py
+    ├── surrogate.py
 
-├── visualization.ipynb
+    ├── visualization.ipynb
 
-├── requirements.txt
+    ├── requirements.txt
 
-├── README.md
+    ├── README.md
 
-└── src/
+    └── src/
 
-    ├── DM Presentation.pdf
+        ├── DM Presentation.pdf
 
-    ├── Final Draft_AI_for_Science_DMO.pdf
-    
-    └── Poster_AIforScience.pdf
+        ├── Final Draft_AI_for_Science_DMO.pdf
+
+        └── Poster_AIforScience.pdf
