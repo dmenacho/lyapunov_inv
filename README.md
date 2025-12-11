@@ -16,9 +16,12 @@ Run `inverse.py` to obtain the admissible parameters. The code produces two outp
 - `admissible_thetas_data.npy` — admissible parameters without the Lyapunov loss
 
 ## VISUALIZATION
-Run `visualization.ipynb` to visualize the frequency plots of the admissible parameters. This notebook loads the files used in the manuscript:  
+Run `visualization.ipynb` to visualize the frequency plots of the admissible parameters (Fig 4 and Fig 5). This notebook loads the files used in the manuscript:  
 - `admissible_thetas_data_<fig_pos>.npy`  
 - `admissible_thetas_total_<fig_pos>.npy`
+
+Run `visualization_data.ipynb` to visualize some samples of the data (Fig 2)
+Run `visualization_stability.ipynb` to visualize the stability of some samples (Fig 3)
 
 lyapunov_inv/
 
