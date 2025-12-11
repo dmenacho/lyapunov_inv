@@ -21,6 +21,7 @@ Run `visualization.ipynb` to visualize the frequency plots of the admissible par
 - `admissible_thetas_total_<fig_pos>.npy`
 
 Run `visualization_data.ipynb` to visualize some samples of the data (Fig 2)
+
 Run `visualization_stability.ipynb` to visualize the stability of some samples (Fig 3)
 
 lyapunov_inv/
