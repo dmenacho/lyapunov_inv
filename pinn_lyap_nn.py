@@ -110,7 +110,7 @@ class NNDynamics:
         trajectory = np.array(trajectory)
         
         # Approximate velocities via finite differences
-        velocities = np.diff(trajectory, axis=0) / (1.0 / learning_rate)  # dt ≈ 1/η
+        velocities = np.diff(trajectory, axis=0) / (1.0 / learning_rate)  
         velocities = np.vstack([velocities[0], velocities])
         
         return trajectory, velocities
@@ -197,7 +197,7 @@ def main():
         output_dim=1,
         device=device
     )
-    print(f"    State dimension: {nn_dynamics.state_dim}")
+    print(f" State dimension: {nn_dynamics.state_dim}")
     
     x_train, f_train = nn_dynamics.generate_collocation_points( num_trajectories=500, num_steps=15, learning_rate_range=(1e-3, 0.1))
     

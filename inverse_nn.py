@@ -6,7 +6,7 @@ from pathlib import Path
 from tqdm import tqdm
 from typing import Tuple, List, Dict
 import matplotlib.pyplot as plt
-from pinn_lyap_nn import LyapunovNet, NNDynamics
+from lyapunov_inv.pinn_lyap_nn import LyapunovNet, NNDynamics
 
 class StabilityConstrainedInverseSolver:
     def __init__(self, lyapunov, nn_dynamics, device='cpu'):
