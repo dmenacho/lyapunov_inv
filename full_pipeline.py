@@ -188,7 +188,7 @@ def main():
     lyap_model = LyapunovNet(state_dim= nn_dynamics.state_dim , hidden_dim=256).to(device)
     optimizer = optim.Adam(lyap_model.parameters(), lr=args.lyap_lr)
     #learner = LyapunovLearner(state_dim=nn_dynamics.state_dim, device=device)
-    learner = LyapunovLearner(lyap_model, optimizer , state_dim = nn_dynamics.state_dim, device= device)
+    learner = LyapunovLearner(lyap_model, optimizer, device= device)
     losses = learner.train(
         x_train,
         f_train,
