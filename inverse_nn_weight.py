@@ -5,8 +5,152 @@ import numpy as np
 from pathlib import Path
 from tqdm import tqdm
 import matplotlib.pyplot as plt
-from pinn_lyap_nn import LyapunovNet, NNDynamics
+from pinn_lyap_nn import LyapunovNet, NNDynamics, ResNetDynamics, TinyResNet
 from typing import Tuple, List, Dict
+
+class StabilityConstrainedNN:
+    def __init__(self, lyapunov, resnet_dynamics, learning_rate= 0.1, device = 'cpu'):
+        self.lyapunov = lyapunov.to(device)
+        self.lyapunov.eval()
+        
+        self.nn_dynamics = resnet_dynamics
+        self.device = device
+        self.learning_rate = learning_rate        
+        self.num_steps = 50
+        self.dt = 1.0 / learning_rate
+
+    def simulate_training_trajectory(self, w_init, num_steps):
+        if num_steps is None:
+            num_steps = self.num_steps
+
+        model = TinyResNet().to(self.device)
+        self.nn_dynamics.unflatten_params(w_init, model)
+        trajectory = [torch.tensor(w_init, dtype=torch.float32, device=self.device)]
+
+        loss_fn = nn.CrossEntropyLoss()
+
+        for step in range(num_steps):
+            batch_idx = np.random.randint(0, len(self.nn_dynamics.X_train))
+            X_batch = self.nn_dynamics.X_train[batch_idx]
+            y_batch = self.nn_dynamics.y_train[batch_idx]
+            
+            y_pred = model(X_batch)
+            loss = loss_fn(y_pred, y_batch)
+            
+            loss.backward()
+
+            with torch.no_grad():
+                for param in model.parameters():
+                    param.data -= self.learning_rate * param.grad
+                    param.grad.zero_()
+            
+            w_current = self.nn_dynamics.flatten_params(model)
+            trajectory.append(w_current.copy())
+
+        trajectory = torch.stack(trajectory)
+        return trajectory
+    
+
+    def compute_loss(self, w0):
+        w0_np = w0.detach().cpu().numpy()
+        trajectory = self.simulate_training_trajectory(w0_np, num_steps=self.num_steps)
+        
+        trajectory_normalized = (trajectory - trajectory.mean(dim=0)) / (trajectory.std(dim=0) + 1e-8)
+        final_loss_value = trajectory[-1].norm()**2
+        L_data = final_loss_value
+        
+        V_values = []
+        V_dot_values = []
+        
+        for i in range(trajectory_normalized.shape[0]):
+            state = trajectory_normalized[i:i+1].clone().detach().requires_grad_(True)
+            V_val = self.lyapunov(state)
+            V_values.append(V_val)
+
+            V_grad = torch.autograd.grad(V_val.sum(), state, create_graph=True)[0]
+
+            if i < trajectory_normalized.shape[0] - 1:
+                f_val = (trajectory_normalized[i+1] - trajectory_normalized[i]) / self.dt
+            else:
+                f_val = (trajectory_normalized[i] - trajectory_normalized[i-1]) / self.dt
+            
+            V_dot = (V_grad * f_val).sum()
+            V_dot_values.append(V_dot)
+
+        V_vals = torch.stack(V_values)
+        V_dot_vals = torch.stack(V_dot_values)
+        
+        w0_normalized = (w0 - w0.mean()) / (w0.std() + 1e-8)
+        w0_normalized = w0_normalized.unsqueeze(0)
+        roa_constraint_1 = torch.relu(self.lyapunov(w0_normalized))
+        
+        # Decay constraint: V̇ ≤ -α·V
+        alpha = 0.05
+        roa_constraint_2 = torch.relu(V_dot_vals + alpha * V_vals.squeeze()).mean()
+        
+        L_lyapunov = roa_constraint_1 + roa_constraint_2
+
+        total_loss = L_lyapunov
+        
+        return total_loss, L_data, L_lyapunov
+    
+
+    def optimize_initialization(self, w0_init, learning_rate_opt, max_iters):
+        w0 = nn.Parameter(torch.tensor(w0_init, dtype=torch.float32, device=self.device))
+        optimizer = optim.Adam([w0], lr=learning_rate_opt)
+
+        prev_loss = float('inf')
+        patience_counter = 0
+        patience = 5
+
+        for iteration in range(max_iters):
+
+            total_loss, loss_data, loss_lyapunov = self.compute_loss(w0)
+            
+            optimizer.zero_grad()
+            total_loss.backward()
+            torch.nn.utils.clip_grad_norm_([w0], max_norm=1.0)
+            optimizer.step()
+            
+            if (iteration + 1) % 10 == 0:
+                print(f"  Iter {iteration+1}: Loss={total_loss.item():.4f}, "
+                      f"L_data={loss_data.item():.4f}, L_lyap={loss_lyapunov.item():.4f}")
+                
+        total_loss, loss_data, loss_lyapunov = self.compute_loss(w0)
+        
+        return w0.detach().cpu().numpy(), total_loss.item(), loss_data.item(), loss_lyapunov.item()
+
+    def discover_stable_initializations( self, n_samples, weight_scale_range):
+        stable_weights = []
+        metadata = []
+
+        weight_scales = np.random.uniform(*weight_scale_range, n_samples)
+        
+        for i, scale in enumerate(tqdm(weight_scales, desc="Weight Initialization Optimization")):
+            w0_init = np.random.randn(self.nn_dynamics.state_dim).astype(np.float32) * scale
+            
+            print(f"\n[{i+1}/{n_samples}] Weight scale = {scale:.4f}")
+ 
+            w0_opt, loss_total, loss_data, loss_lyapunov = self.optimize_initialization(
+                w0_init,
+                learning_rate_opt=1e-4,
+                max_iters=25,
+            )
+            
+            print(f"Total Loss = {loss_total:.4f}, Data Loss = {loss_data:.4f}, Lyapunov Loss = {loss_lyapunov:.4f}")
+
+            if loss_total <= 0.9:
+                stable_weights.append(w0_opt)
+                metadata.append({
+                    'initial_scale': float(scale),
+                    'loss_total': float(loss_total),
+                    'loss_data': float(loss_data),
+                    'loss_lyapunov': float(loss_lyapunov),
+                    'weight_norm': float(np.linalg.norm(w0_opt))
+                })
+        
+        return stable_weights, metadata
+
 
 class StabilityConstrained:
     def __init__(self, lyapunov, nn_dynamics, learning_rate= 0.1, device = 'cpu'):
@@ -262,38 +406,34 @@ def main():
 
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     
-    nn_dynamics = NNDynamics(
-        input_dim=1,
-        hidden_dim=8,
-        output_dim=1,
-        device=device
-    )
+    resnet_dynamics = ResNetDynamics(device=device, num_train_samples=10000)
+
+    nn_dynamics = NNDynamics(input_dim=1, hidden_dim=8, output_dim=1, device=device)
     
-    lyapunov = LyapunovNet(state_dim=nn_dynamics.state_dim, hidden_dim=128).to(device)
-    lyapunov.load_state_dict(torch.load('models/lyapunov_nn_training.pt', map_location=device))
+    lyapunov = LyapunovNet(state_dim=resnet_dynamics.state_dim, hidden_dim=256).to(device)
+    lyapunov.load_state_dict(torch.load('/Users/daniel/Codes/MS Michigan/AI for Science/lyapunov_inv/training_info/models/1000_50_0.01/20260202_121102/lyapunov_resnet.pt', map_location=device))
 
-    solver = StabilityConstrained(
-        lyapunov,
-        nn_dynamics,
-        learning_rate=0.1,
-        device=device
-    )
+    # solver = StabilityConstrained(
+    #     lyapunov,
+    #     nn_dynamics,
+    #     learning_rate=0.1,
+    #     device=device
+    # )
+    
+    solver = StabilityConstrainedNN(lyapunov, resnet_dynamics, learning_rate=10)
 
-    stable_weights, metadata = solver.discover_stable_initializations(
-        n_samples=1000,
-        weight_scale_range=(1e-3, 0.5)
-    )
+    stable_weights, metadata = solver.discover_stable_initializations(n_samples=1000, weight_scale_range=(1e-3, 1))
     
     print(f" Found {len(stable_weights)} stable weight configurations")
     
-    analyze_stable_weights(stable_weights, metadata, nn_dynamics.state_dim)
-    Path('results').mkdir(exist_ok=True)
-    np.save('results/stable_weights.npy', np.array(stable_weights))
+    # analyze_stable_weights(stable_weights, metadata, nn_dynamics.state_dim)
+    # Path('results').mkdir(exist_ok=True)
+    # np.save('results/stable_weights.npy', np.array(stable_weights))
 
-    metadata_array = np.array([ [m['initial_scale'], m['loss_total'], m['loss_data'], m['loss_lyapunov'], m['weight_norm']] for m in metadata])
-    np.save('results/stable_weights_metadata.npy', metadata_array)
+    # metadata_array = np.array([ [m['initial_scale'], m['loss_total'], m['loss_data'], m['loss_lyapunov'], m['weight_norm']] for m in metadata])
+    # np.save('results/stable_weights_metadata.npy', metadata_array)
 
-    plot_stable_weights(metadata, criterion="stable_initializations")
+    # plot_stable_weights(metadata, criterion="stable_initializations")
 
 if __name__ == "__main__":
     main()
