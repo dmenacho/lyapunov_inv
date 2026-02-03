@@ -140,7 +140,8 @@ class ModelOCIFAR10Dynamics(DynamicSampler):
     def __init__(self, model_instance, device='cpu', num_train_samples=1000):
         super().__init__(model_instance, device, num_train_samples)
 
-    def _load_cifar10(self, num_samples):
+    #def _load_cifar10(self, num_samples):
+    def _load_dataset(self, num_samples): # implemented with cifar10
         transform = transforms.Compose([
             transforms.ToTensor(),
             transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
