@@ -9,31 +9,43 @@ from typing import Tuple, List
 import matplotlib.pyplot as plt
 from torchvision import datasets, transforms
 
-
-def zubov_loss(x, V_net, f_torch, device, mu=0.1, transform="exp"):
-    # https://git.uwaterloo.ca/hybrid-systems-lab/lyznet
-    # adapterted from lyznet/src/lyznet/neural_learner.py
-    x.requires_grad = True
+def zubov_loss(
+    x: torch.Tensor,
+    V_net: nn.Module,
+    f_batch: torch.Tensor,
+    device: torch.device,
+    mu: float = 0.1,
+    transform: str = "exp",
+) -> torch.Tensor:
+    """
+    Zubov residual-based loss adapted from LyZNet conventions:
+      residual = V_dot + mu * ||x||^2 * (1 - V)     (exp transform)
+    or:
+      residual = V_dot + mu * ||x||^2 * (1 - V) * (1 + V) (other transform)
+    plus origin constraints.
+    """
+    x = x.requires_grad_(True)
     V = V_net(x).squeeze()
-    V_grad = torch.autograd.grad( outputs=V.sum(), inputs=x, create_graph=True, retain_graph=True )[0]
-    f= f_torch(x)
-    V_dot = (V_grad*f).sum(dim=1) 
-    norm_sq= (x**2).sum(dim=1) 
+    V_grad = torch.autograd.grad(outputs=V.sum(), inputs=x, create_graph=True, retain_graph=True)[0]
+    # Here f_batch corresponds to f(x) at the same batch points
+    V_dot = (V_grad * f_batch).sum(dim=1)
+    norm_sq = (x**2).sum(dim=1)
+
     if transform == "exp":
-        zubov_residual = V_dot + mu*norm_sq*(1 - V)
-    else: 
-        zubov_residual = V_dot + mu*norm_sq*(1 - V)*(1 + V)
-    pde_loss = zubov_residual**2
-    
-     # Origin constraint: V(0) = 0
-    zero_tensor = torch.zeros_like(x[0]).unsqueeze(0).to(device)
-    zero_tensor.requires_grad_(True)
-    V_zero = V_net(zero_tensor)
-    V_grad_zero = torch.autograd.grad(outputs=V_zero.sum(), inputs=zero_tensor, create_graph=True)[0]
-    
-    orign_loss =  (V_grad_zero**2).sum() + (V_zero**2)
-    loss = (pde_loss + orign_loss).mean()
-    return loss
+        residual = V_dot + mu * norm_sq * (1.0 - V)
+    else:
+        residual = V_dot + mu * norm_sq * (1.0 - V) * (1.0 + V)
+
+    pde_loss = residual**2
+
+    # Origin constraint: V(0) ~ 0 and grad V(0) ~ 0
+    zero = torch.zeros_like(x[0]).unsqueeze(0).to(device)
+    zero = zero.requires_grad_(True)
+    V0 = V_net(zero)
+    V0_grad = torch.autograd.grad(outputs=V0.sum(), inputs=zero, create_graph=True)[0]
+    origin_loss = (V0_grad**2).sum() + (V0**2).sum()
+
+    return (pde_loss.mean() + origin_loss)
 
 class DynamicSampler:
     def __init__(self, model_instance, device='cpu', num_train_samples=1000):
