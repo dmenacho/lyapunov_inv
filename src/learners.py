@@ -240,9 +240,9 @@ class ModelOMNISTDynamics(DynamicSampler):
     
 
 class LyapunovLearner:
-    def __init__(self, state_dim: int, lyap_model, optimizer, device: torch.device) -> None:
+    def __init__(self, lyap_model, optimizer, device: torch.device) -> None:
         self.device = device
-        self.state_dim = state_dim
+        #self.state_dim = state_dim
         #self.lyapunov = LyapunovNet(state_dim=state_dim, hidden_dim=256).to(device)
         self.lyapunov = lyap_model
         #self.optimizer = optim.Adam(self.lyapunov.parameters(), lr=1e-3)
