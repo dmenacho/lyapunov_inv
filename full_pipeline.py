@@ -165,7 +165,7 @@ def main():
         #nn_dynamics = getattr(learners,f"ModelO{args.dataset}10Dynamics")(TinyResNet().to(device), device=device, num_train_samples=1000)
         nn_dynamics = getattr(learners,f"ModelO{args.dataset}10Dynamics")(getattr(dynamic_models,args.target_model_name)().to(device), device=device, num_train_samples=1000)
     except:
-        print(f"ModelO{args.dataset}10Dynamics class has been not implemented")
+        print(f"ModelO{args.dataset}Dynamics class has been not implemented")
     print(f" State dimension: {nn_dynamics.state_dim}")
 
     x_train, f_train, aux = nn_dynamics.generate_collocation_points(num_trajectories=args.num_trajectories, num_steps=args.traj_steps)

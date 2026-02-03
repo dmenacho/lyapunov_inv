@@ -51,26 +51,4 @@ lyapunov_inv/
 
 ## `full_pipeline.py` command
 
-`python full_pipeline.py \
-                        --data_dir "../data" \
-                        --out_dir "../data/training_info"  \
-                        --dataset "CIFAR10"  \
-                        --target_model_name "TinyResNet" \
-                        --num_train_samples 10000 \
-                        --num_trajectories 200 \
-                        --traj_steps 50   \
-                        --gd_lr 2  \
-                        --w_init_scale 0.5 \
-                        --lyap_lr 0.001  \
-                        --lyap_epochs 100 \
-                        --lyap_batch_size 128  \
-                        --zubov_loss_mu 0.1  \
-                        --zubov_loss_transform "exp"  \
-                        --grad_clip 1.0 \
-                        --search_samples 1000 \
-                        --weight_scale_min 0.1 \
-                        --weight_scale_max 1.0 \
-                        --alpha 0.05 \
-                        --constraint_threshold 1.0 \
-                        --test_comparative_epochs 50 \
-                        --test_comparative_lr 0.01`
+`python full_pipeline.py --data_dir "../data" --out_dir "../data/training_info" --dataset "CIFAR10" --target_model_name "TinyResNet" --num_train_samples 10000 --num_trajectories 200 --traj_steps 50 --gd_lr 2 --w_init_scale 0.5 --lyap_lr 0.001 --lyap_epochs 100 --lyap_batch_size 128  --zubov_loss_mu 0.1 --zubov_loss_transform "exp" --grad_clip 1.0 --search_samples 1000 --weight_scale_min 0.1 --weight_scale_max 1.0 --alpha 0.05 --constraint_threshold 1.0 --test_comparative_epochs 50 --test_comparative_lr 0.01
