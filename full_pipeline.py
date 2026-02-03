@@ -24,8 +24,8 @@ import random
 
 from src.dynamic_models import TinyResNet
 from src import dynamic_models
-from src.lyap_models import LyapunovNet,zubov_loss
-from src.learners import ModelOcifar10Dynamics,LyapunovLearner
+from src.lyap_models import LyapunovNet
+from src.learners import ModelOCIFAR10Dynamics,LyapunovLearner
 from src import learners
 from src.inverser_modeling import StabilityConstrainedNN
 from src.plot_utils import plot_stable_weights
