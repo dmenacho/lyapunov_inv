@@ -95,13 +95,13 @@ def build_parser():
     f = sub.add_parser("full", help="Run full pipeline: train Lyapunov then stable-search.")
 
     # --- train phase args ---
-    f.add_argument("--dataset", type=str, default="cifar")
+    f.add_argument("--dataset", type=str, default="CIFAR10")
     f.add_argument("--target_model_name", type=str, default="TinyResNet")
     f.add_argument("--num_train_samples", type=int, default=10000)
     f.add_argument("--num_trajectories", type=int, default=200)
     f.add_argument("--traj_steps", type=int, default=50)
     f.add_argument("--gd_lr", type=float, default=1e-2)
-    f.add_argument("--data_type", type=str, default="CIFAR10", choices=["cifar", "nmist"])
+    #f.add_argument("--data_type", type=str, default="CIFAR10", choices=["cifar", "nmist"])
 
     f.add_argument("--w_init_scale", type=float, default=0.5)
 
@@ -114,7 +114,7 @@ def build_parser():
     f.add_argument("--grad_clip", type=float, default=1.0)
 
     # --- stable search phase args ---
-    f.add_argument("--num_train_samples_search", type=int, default=10000, help="CIFAR samples used during stable-search dynamics.")
+    #f.add_argument("--num_train_samples_search", type=int, default=10000, help="CIFAR samples used during stable-search dynamics.")
     f.add_argument("--search_samples", type=int, default=1000)
     f.add_argument("--weight_scale_min", type=float, default=0.1)
     f.add_argument("--weight_scale_max", type=float, default=1.0)
