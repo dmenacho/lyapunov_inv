@@ -161,52 +161,131 @@ class ModelOCIFAR10Dynamics(DynamicSampler):
             self.y_train.append(y.to(self.device))
 
 
+class ModelOCIFAR10Dynamics(DynamicSampler):
+    def __init__(self, model_instance, device='cpu', num_train_samples=1000):
+        super().__init__(model_instance, device, num_train_samples)
+
+    #def _load_cifar10(self, num_samples):
+    def _load_mnist(self, num_samples: int) -> None:
+        transform = transforms.Compose(
+            [
+                transforms.ToTensor(),
+                transforms.Normalize((0.1307,), (0.3081,)),  # standard MNIST mean/std
+            ]
+        )
+        dataset = datasets.MNIST(root=self.data_dir, train=True, download=True, transform=transform)
+
+        num_samples = min(num_samples, len(dataset))
+        indices = np.random.choice(len(dataset), num_samples, replace=False)
+
+        subset = torch.utils.data.Subset(dataset, indices)
+        loader = torch.utils.data.DataLoader(subset, batch_size=64, shuffle=False)
+
+        self.X_train = []
+        self.y_train = []
+        for X, y in loader:
+            self.X_train.append(X.to(self.device))  # X shape: (B,1,28,28)
+            self.y_train.append(y.to(self.device))
+
+
+#class LyapunovLearner:
+#    def __init__(self, lyap_model, optimizer , state_dim = 2, device= 'cpu'):
+#        self.device = device
+#        self.state_dim = state_dim
+#        #self.lyapunov = LyapunovNet(state_dim=state_dim, hidden_dim=256).to(device)
+#        self.lyapunov = lyap_model
+#        #self.optimizer = optim.Adam(self.lyapunov.parameters(), lr=1e-3)
+#        self.optimizer = optimizer
+#    
+#    def train(self, x_train, f_train, epochs=30, batch_size=126, mu=0.1, transform="exp"):
+#        n_samples = x_train.shape[0]
+#        losses = []
+#        
+#        for epoch in range(epochs):
+#            perm = torch.randperm(n_samples)
+#            x_shuffled = x_train[perm]
+#            f_shuffled = f_train[perm]
+#            
+#            epoch_loss = 0.0
+#            n_batches = 0
+#            
+#            pbar = tqdm(range(0, n_samples, batch_size), desc=f"Epoch {epoch + 1}/{epochs}", leave=False)
+#            
+#            for i in pbar:
+#                x_batch = x_shuffled[i:i+batch_size]
+#                f_batch = f_shuffled[i:i+batch_size]
+#                
+#                def f_torch_batch(x):
+#                    if x.shape[0] != f_batch.shape[0]:
+#                        indices = torch.randint(0, f_batch.shape[0], (x.shape[0],))
+#                        return f_batch[indices]
+#                    return f_batch
+#                
+#                loss = zubov_loss(x_batch, self.lyapunov, f_torch_batch, self.device, mu=mu, transform=transform)
+#                
+#                self.optimizer.zero_grad()
+#                loss.backward()
+#                torch.nn.utils.clip_grad_norm_(self.lyapunov.parameters(), max_norm=1.0)
+#                self.optimizer.step()
+#                
+#                epoch_loss += loss.item()
+#                n_batches += 1
+#                pbar.set_postfix(loss=loss.item())
+#            
+#            avg_loss = epoch_loss / n_batches
+#            losses.append(avg_loss)
+#            print(f"Epoch {epoch+1}/{epochs}: Loss = {avg_loss:.6f}")
+#        
+#        return losses
+    
+
 class LyapunovLearner:
-    def __init__(self, lyap_model, optimizer , state_dim = 2, device= 'cpu'):
+    def __init__(self, state_dim: int, lyap_model, optimizer, device: torch.device) -> None:
         self.device = device
         self.state_dim = state_dim
         #self.lyapunov = LyapunovNet(state_dim=state_dim, hidden_dim=256).to(device)
         self.lyapunov = lyap_model
         #self.optimizer = optim.Adam(self.lyapunov.parameters(), lr=1e-3)
         self.optimizer = optimizer
-    
-    def train(self, x_train, f_train, epochs=30, batch_size=126, mu=0.1, transform="exp"):
-        n_samples = x_train.shape[0]
-        losses = []
-        
+
+    def train(
+        self,
+        x_train: torch.Tensor,
+        f_train: torch.Tensor,
+        epochs: int,
+        batch_size: int,
+        mu: float,
+        transform: str,
+        grad_clip: float = 1.0,
+    ) -> List[float]:
+        n = x_train.shape[0]
+        losses: List[float] = []
+
         for epoch in range(epochs):
-            perm = torch.randperm(n_samples)
+            perm = torch.randperm(n, device=x_train.device)
             x_shuffled = x_train[perm]
             f_shuffled = f_train[perm]
-            
+
             epoch_loss = 0.0
             n_batches = 0
-            
-            pbar = tqdm(range(0, n_samples, batch_size), desc=f"Epoch {epoch + 1}/{epochs}", leave=False)
-            
+
+            pbar = tqdm(range(0, n, batch_size), desc=f"Epoch {epoch+1}/{epochs}", leave=False)
             for i in pbar:
-                x_batch = x_shuffled[i:i+batch_size]
-                f_batch = f_shuffled[i:i+batch_size]
-                
-                def f_torch_batch(x):
-                    if x.shape[0] != f_batch.shape[0]:
-                        indices = torch.randint(0, f_batch.shape[0], (x.shape[0],))
-                        return f_batch[indices]
-                    return f_batch
-                
-                loss = zubov_loss(x_batch, self.lyapunov, f_torch_batch, self.device, mu=mu, transform=transform)
-                
-                self.optimizer.zero_grad()
+                xb = x_shuffled[i : i + batch_size]
+                fb = f_shuffled[i : i + batch_size]
+
+                self.optimizer.zero_grad(set_to_none=True)
+                loss = zubov_loss(xb, self.lyapunov, fb, self.device, mu=mu, transform=transform)
                 loss.backward()
-                torch.nn.utils.clip_grad_norm_(self.lyapunov.parameters(), max_norm=1.0)
+                torch.nn.utils.clip_grad_norm_(self.lyapunov.parameters(), max_norm=grad_clip)
                 self.optimizer.step()
-                
-                epoch_loss += loss.item()
+
+                epoch_loss += float(loss.item())
                 n_batches += 1
-                pbar.set_postfix(loss=loss.item())
-            
-            avg_loss = epoch_loss / n_batches
-            losses.append(avg_loss)
-            print(f"Epoch {epoch+1}/{epochs}: Loss = {avg_loss:.6f}")
-        
+                pbar.set_postfix(loss=float(loss.item()))
+
+            avg = epoch_loss / max(1, n_batches)
+            losses.append(avg)
+            print(f"Epoch {epoch+1}/{epochs}: loss={avg:.6f}")
+
         return losses
