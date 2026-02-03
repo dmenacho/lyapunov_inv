@@ -94,6 +94,12 @@ def build_parser():
     # ONE command: full pipeline
     f = sub.add_parser("full", help="Run full pipeline: train Lyapunov then stable-search.")
 
+    f.add_argument("--run_id", type=str, default="")
+    f.add_argument("--seed", type=int, default=0)
+    f.add_argument("--device", type=str, default="cuda" if torch.cuda.is_available() else "cpu")
+    f.add_argument("--data_dir", type=str, default="./data")
+    f.add_argument("--out_dir", type=str, default="./training_info")
+
     # --- train phase args ---
     f.add_argument("--dataset", type=str, default="CIFAR10")
     f.add_argument("--target_model_name", type=str, default="TinyResNet")
