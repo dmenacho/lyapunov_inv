@@ -9,32 +9,6 @@ from typing import Tuple, List
 import matplotlib.pyplot as plt
 from torchvision import datasets, transforms
 
-from src.dynamic_models import TinyResNet
-from src.lyap_models import LyapunovNet,zubov_loss
-
-
-class LyapunovNet(nn.Module):
-    def __init__(self, state_dim = 2, hidden_dim = 128):
-        super().__init__()
-
-        self.input_compress = nn.Linear(state_dim, 128)
-
-        self.net = nn.Sequential(
-            nn.Linear(128, hidden_dim),
-            nn.Tanh(),
-            nn.Linear(hidden_dim, hidden_dim),
-            nn.Tanh(),
-            nn.Linear(hidden_dim, hidden_dim),
-            nn.Tanh(),
-            nn.Linear(hidden_dim, 1)
-        )
-    def forward(self, x):
-        x = self.input_compress(x)
-        V = self.net(x)
-        # V= torch.relu(V) + 1e-6
-        V = V**2 + 1e-6
-        return V
-
 
 def zubov_loss(x, V_net, f_torch, device, mu=0.1, transform="exp"):
     # https://git.uwaterloo.ca/hybrid-systems-lab/lyznet
@@ -61,32 +35,14 @@ def zubov_loss(x, V_net, f_torch, device, mu=0.1, transform="exp"):
     loss = (pde_loss + orign_loss).mean()
     return loss
 
-
-class ResNetDynamics:
-    def __init__(self, device='cpu', num_train_samples=1000):
+class DynamicSampler:
+    def __init__(self, model_instance, device='cpu', num_train_samples=1000):
         self.device = device
-        self.model = TinyResNet().to(device)
+        #self.model = TinyResNet().to(device)
+        self.model = model_instance.to(device)
         self.state_dim = self.model.count_parameters()
-        self._load_cifar10(num_train_samples)
+        self._load_dataset(num_train_samples)
 
-    def _load_cifar10(self, num_samples):
-        transform = transforms.Compose([
-            transforms.ToTensor(),
-            transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
-        ])
-        
-        dataset = datasets.CIFAR10(root='./data', train=True, download=True, transform=transform)
-        
-        indices = np.random.choice(len(dataset), num_samples, replace=False)
-        subset = torch.utils.data.Subset(dataset, indices)
-        loader = torch.utils.data.DataLoader(subset, batch_size=64, shuffle=False)
-        
-        self.X_train = []
-        self.y_train = []
-        
-        for X, y in loader:
-            self.X_train.append(X.to(self.device))
-            self.y_train.append(y.to(self.device))  
 
     def flatten_params(self, model):
         params = []
@@ -107,7 +63,7 @@ class ResNetDynamics:
             idx += size
 
     def simulate_trajectory(self, w_init, learning_rate, num_steps):
-        model = TinyResNet().to(self.device)
+        model = self.model.to(self.device)
         self.unflatten_params(w_init, model)
         
         optimizer = optim.SGD(model.parameters(), lr=learning_rate)
@@ -138,8 +94,10 @@ class ResNetDynamics:
         velocities = np.diff(trajectory, axis=0) * learning_rate
         # velocities = np.diff(trajectory, axis=0)
         velocities = np.vstack([velocities[0], velocities])
+
+        aux = (loss.cpu().detach().numpy(),)
         
-        return trajectory, velocities
+        return trajectory, velocities, aux
     
     def generate_collocation_points(self, num_trajectories=50, num_steps=10) :
 
@@ -150,7 +108,7 @@ class ResNetDynamics:
             w_init = np.random.randn(self.state_dim).astype(np.float32) * 0.05
             # lr = np.random.uniform(*learning_rate_range)
             
-            trajectory, velocities = self.simulate_trajectory(w_init, learning_rate_range, num_steps)
+            trajectory, velocities, aux = self.simulate_trajectory(w_init, learning_rate_range, num_steps)
             
             all_states.append(trajectory)
             all_velocities.append(velocities)
@@ -171,15 +129,45 @@ class ResNetDynamics:
         
         print(f"Generated {x_tensor.shape[0]} collocation points")
         
-        return x_tensor, f_tensor
-    
-    
+        return x_tensor, f_tensor, aux
+
+    def _load_dataset(self, num_samples):
+        print("not implemented")
+        pass
+
+
+class ModelOCIFAR10Dynamics(DynamicSampler):
+    def __init__(self, model_instance, device='cpu', num_train_samples=1000):
+        super().__init__(model_instance, device, num_train_samples)
+
+    def _load_cifar10(self, num_samples):
+        transform = transforms.Compose([
+            transforms.ToTensor(),
+            transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
+        ])
+        
+        dataset = datasets.CIFAR10(root='./data', train=True, download=True, transform=transform)
+        
+        indices = np.random.choice(len(dataset), num_samples, replace=False)
+        subset = torch.utils.data.Subset(dataset, indices)
+        loader = torch.utils.data.DataLoader(subset, batch_size=64, shuffle=False)
+        
+        self.X_train = []
+        self.y_train = []
+        
+        for X, y in loader:
+            self.X_train.append(X.to(self.device))
+            self.y_train.append(y.to(self.device))
+
+
 class LyapunovLearner:
-    def __init__(self, state_dim = 2, device= 'cpu'):
+    def __init__(self, lyap_model, optimizer , state_dim = 2, device= 'cpu'):
         self.device = device
         self.state_dim = state_dim
-        self.lyapunov = LyapunovNet(state_dim=state_dim, hidden_dim=256).to(device)
-        self.optimizer = optim.Adam(self.lyapunov.parameters(), lr=1e-3)
+        #self.lyapunov = LyapunovNet(state_dim=state_dim, hidden_dim=256).to(device)
+        self.lyapunov = lyap_model
+        #self.optimizer = optim.Adam(self.lyapunov.parameters(), lr=1e-3)
+        self.optimizer = optimizer
     
     def train(self, x_train, f_train, epochs=30, batch_size=126, mu=0.1, transform="exp"):
         n_samples = x_train.shape[0]
@@ -221,26 +209,3 @@ class LyapunovLearner:
             print(f"Epoch {epoch+1}/{epochs}: Loss = {avg_loss:.6f}")
         
         return losses
-    
-def main():
-
-    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-
-    nn_dynamics = ResNetDynamics(device=device, num_train_samples=1000)
-    print(f" State dimension: {nn_dynamics.state_dim}")
-    x_train, f_train = nn_dynamics.generate_collocation_points(num_trajectories=1000, num_steps=50)
-    learner = LyapunovLearner(state_dim=nn_dynamics.state_dim, device=device)
-    losses = learner.train(x_train, f_train, epochs=100, batch_size=128, mu=0.1, transform="exp")
-    torch.save(learner.lyapunov.state_dict(), 'models/lyapunov_resnet.pt')
-
-    plt.figure(figsize=(10, 6))
-    plt.plot(losses, linewidth=2)
-    plt.xlabel('Epoch', fontsize=12)
-    plt.ylabel('Loss', fontsize=12)
-    plt.title('Lyapunov PINN Training Loss (ResNet Training Dynamics)', fontsize=14)
-    plt.grid(True, alpha=0.3)
-    plt.yscale('log')
-    plt.savefig('lyapunov_resnet_training_loss.png', dpi=150, bbox_inches='tight')
-
-if __name__ == "__main__":
-    main()
