@@ -51,7 +51,7 @@ lyapunov_inv/
 
 ## `full_pipeline.py` command
 
-python full_pipeline.py \
+`python full_pipeline.py \
                         --data_dir "../data" \
                         --out_dir "../data/training_info"  \
                         --dataset "CIFAR10"  \
@@ -73,4 +73,4 @@ python full_pipeline.py \
                         --alpha 0.05 \
                         --constraint_threshold 1.0 \
                         --test_comparative_epochs 50 \
-                        --test_comparative_lr 0.01  \
+                        --test_comparative_lr 0.01`
