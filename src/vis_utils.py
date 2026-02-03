@@ -1,6 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
-from typing import Tuple, List
+from typing import Tuple, List, Dict
+from pathlib import Path
 
 def plot_stable_weights(metadata: List[Dict[str, float]], out_path: Path, title_suffix: str = "") -> None:
     if not metadata:
