@@ -28,7 +28,7 @@ from src.lyap_models import LyapunovNet
 from src.learners import ModelOCIFAR10Dynamics,LyapunovLearner
 from src import learners
 from src.inverser_modeling import StabilityConstrainedNN
-from src.plot_utils import plot_stable_weights
+from src.vis_utils import plot_stable_weights
 
 
 def set_model_weights(model, w_vec,device):
