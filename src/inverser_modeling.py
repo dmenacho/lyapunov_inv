@@ -4,7 +4,7 @@ from pathlib import Path
 from typing import Dict, List, Optional, Tuple, Union
 import torch
 from .lyap_models import LyapunovNet
-from learners import DynamicSampler
+from .learners import DynamicSampler
 import numpy as np
 from tqdm import tqdm
 
