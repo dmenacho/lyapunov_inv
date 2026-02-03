@@ -163,7 +163,7 @@ def main():
     #nn_dynamics = ModelOcifar10Dynamics(TinyResNet().to(device), device=device, num_train_samples=1000)
     try:
         #nn_dynamics = getattr(learners,f"ModelO{args.dataset}10Dynamics")(TinyResNet().to(device), device=device, num_train_samples=1000)
-        nn_dynamics = getattr(learners,f"ModelO{args.dataset}10Dynamics")(getattr(dynamic_models,args.target_model_name)().to(device), device=device, num_train_samples=1000)
+        nn_dynamics = getattr(learners,f"ModelO{args.dataset}Dynamics")(getattr(dynamic_models,args.target_model_name)().to(device), device=device, num_train_samples=1000)
     except:
         print(f"ModelO{args.dataset}Dynamics class has been not implemented")
     print(f" State dimension: {nn_dynamics.state_dim}")
