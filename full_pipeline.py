@@ -306,6 +306,9 @@ def main():
 
     losses_stable = []
     accs_stable = []
+    print("training on device")
+    print(device)
+
 
     for i in tqdm(range(n_runs), desc="Stable inits"):
         w = stable_weights[i]
@@ -322,7 +325,7 @@ def main():
     accs_random = []
 
     for i in tqdm(range(n_runs), desc="Random inits"):
-        model = getattr(dynamic_models,args.target_model_name)().to(device)()
+        model = getattr(dynamic_models,args.target_model_name)().to(device)
         tr_loss, te_acc = train_one_run(model, train_loader, test_loader, n_epochs=n_epochs, lr=lr, device= device)
         losses_random.append(tr_loss)
         accs_random.append(te_acc)
