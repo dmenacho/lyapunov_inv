@@ -156,6 +156,7 @@ def main():
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
     results_dir = Path(args.out_dir) /  "results" / f"{args.num_trajectories}_{args.traj_steps}_{args.gd_lr}" /args.run_id
+    results_dir.mkdir(parents=True, exist_ok=True)
 
     ######################################################################################################
     # DYNAMIC SAMPLING
