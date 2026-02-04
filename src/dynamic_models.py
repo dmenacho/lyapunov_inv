@@ -3,7 +3,7 @@ import torch.nn as nn
 import torch.optim as optim
 import torch.nn.functional as F
 from  torchvision.models import alexnet
-from  torchvision.models import alexnet
+from  torchvision import models
 
 class Residualblock(nn.Module):
     def __init__(self, in_channels, out_channels, stride=1):
@@ -77,3 +77,22 @@ class TinyResNet1C(nn.Module):
     
     def count_parameters(self):
         return sum(p.numel() for p in self.parameters())
+
+alexnet10 = lambda : alexnet(num_classes=10)
+
+convnext_tiny10 = lambda: models.convnext_tiny(num_classes = 10)
+
+convnext_small10 = lambda: models.convnext_small(num_classes = 10)
+
+convnext_base10 = lambda: models.convnext_base(num_classes = 10)
+
+convnext_large10 = lambda: models.convnext_large(num_classes = 10)
+
+densenet121_10 = lambda: models.densenet121(num_classes = 10)
+densenet169_10 = lambda: models.densenet169(num_classes = 10)
+densenet201_10 = lambda: models.densenet201(num_classes = 10)
+
+efficientnet_b0_10 = lambda: models.efficientnet_b0(num_classes = 10)
+efficientnet_b3_10 = lambda: models.efficientnet_b3(num_classes = 10)
+efficientnet_b5_10 = lambda: models.efficientnet_b5(num_classes = 10)
+efficientnet_b7_10 = lambda: models.efficientnet_b7(num_classes = 10)
