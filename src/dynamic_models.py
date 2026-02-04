@@ -3,6 +3,7 @@ import torch.nn as nn
 import torch.optim as optim
 import torch.nn.functional as F
 from  torchvision.models import alexnet
+from  torchvision.models import alexnet
 
 class Residualblock(nn.Module):
     def __init__(self, in_channels, out_channels, stride=1):
