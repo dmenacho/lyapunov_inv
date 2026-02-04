@@ -78,7 +78,7 @@ class TinyResNet1C(nn.Module):
     def count_parameters(self):
         return sum(p.numel() for p in self.parameters())
 
-alexnet10 = lambda : alexnet(num_classes=10)
+alexnet_10 = lambda : alexnet(num_classes=10)
 
 convnext_tiny10 = lambda: models.convnext_tiny(num_classes = 10)
 

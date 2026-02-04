@@ -52,7 +52,8 @@ class DynamicSampler:
         self.device = device
         #self.model = TinyResNet().to(device)
         self.model = model_instance.to(device)
-        self.state_dim = self.model.count_parameters()
+        #self.state_dim = self.model.count_parameters()
+        self.state_dim = sum(p.numel() for p in self.model.parameters())
         self.data_dir = data_dir
         self._load_dataset(num_train_samples)
 
