@@ -212,8 +212,15 @@ class ModelOMNISTDynamics(DynamicSampler):
                 transforms.Normalize((0.1307,), (0.3081,)),  # standard MNIST mean/std
             ]
         )
-        self.dataset_train = datasets.MNIST(root=self.data_dir, train=True, download=True, transform=transform)
-        self.dataset_test = datasets.MNIST(root=self.data_dir, train=False, download=True, transform=transform)
+
+        t_transform = transforms.Compose(
+            [
+                transforms.ToTensor(),
+                transforms.Normalize((0.1307,), (0.3081,)),  # standard MNIST mean/std
+            ]
+        )
+        self.dataset_train = datasets.MNIST(root=self.data_dir, train=True, download=True, transform=transform, target_transform = t_transform)
+        self.dataset_test = datasets.MNIST(root=self.data_dir, train=False, download=True, transform=transform, target_transform = t_transform)
 
         num_samples = min(num_samples, len(self.dataset_train))
         indices = np.random.choice(len(self.dataset_train), num_samples, replace=False)
