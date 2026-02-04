@@ -205,15 +205,17 @@ class ModelOMNISTDynamics(DynamicSampler):
         transform = transforms.Compose(
             [
                 transforms.ToTensor(),
+                transforms.Grayscale(num_output_channels=3),
                 transforms.Normalize((0.1307,), (0.3081,)),  # standard MNIST mean/std
             ]
         )
-        dataset = datasets.MNIST(root=self.data_dir, train=True, download=True, transform=transform)
+        self.dataset_train = datasets.MNIST(root=self.data_dir, train=True, download=True, transform=transform)
+        self.dataset_test = datasets.MNIST(root=self.data_dir, train=False, download=True, transform=transform)
 
-        num_samples = min(num_samples, len(dataset))
-        indices = np.random.choice(len(dataset), num_samples, replace=False)
+        num_samples = min(num_samples, len(self.dataset_train))
+        indices = np.random.choice(len(self.dataset_train), num_samples, replace=False)
 
-        subset = torch.utils.data.Subset(dataset, indices)
+        subset = torch.utils.data.Subset(self.dataset_train, indices)
         loader = torch.utils.data.DataLoader(subset, batch_size=64, shuffle=False)
 
         self.X_train = []

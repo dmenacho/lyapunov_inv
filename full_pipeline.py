@@ -289,23 +289,23 @@ def main():
     print("Num stable weights:", len(stable_weights))
     print("State dim:", stable_weights[0].shape[0])
 
-    transform = transforms.Compose([
-        transforms.ToTensor(),
-        transforms.Normalize((0.5,0.5,0.5),(0.5,0.5,0.5))
-        ])
+    #transform = transforms.Compose([
+    #    transforms.ToTensor(),
+    #    transforms.Normalize((0.5,0.5,0.5),(0.5,0.5,0.5))
+    #    ])
 
-    #train_dataset = datasets.CIFAR10(root='./data', train=True, download=True, transform=transform)
-    train_dataset = getattr(datasets,args.dataset)(root='./data', train=True, download=True, transform=transform)
-    #test_dataset  = datasets.CIFAR10(root='./data', train=False, download=True, transform=transform)
-    test_dataset = getattr(datasets,args.dataset)(root='./data', train=False, download=True, transform=transform)
+    ##train_dataset = datasets.CIFAR10(root='./data', train=True, download=True, transform=transform)
+    #train_dataset = getattr(datasets,args.dataset)(root='./data', train=True, download=True, transform=transform)
+    ##test_dataset  = datasets.CIFAR10(root='./data', train=False, download=True, transform=transform)
+    #test_dataset = getattr(datasets,args.dataset)(root='./data', train=False, download=True, transform=transform)
 
     n_train = 10000
     n_test  = 500
-    train_idx = np.random.choice(len(train_dataset), n_train, replace=False)
-    test_idx  = np.random.choice(len(test_dataset),  n_test,  replace=False)
+    train_idx = np.random.choice(len(nn_dynamics.train_dataset), n_train, replace=False)
+    test_idx  = np.random.choice(len(nn_dynamics.test_dataset),  n_test,  replace=False)
 
-    train_loader = DataLoader(Subset(train_dataset, train_idx), batch_size=64, shuffle=True)
-    test_loader  = DataLoader(Subset(test_dataset,  test_idx),  batch_size=64, shuffle=False)
+    train_loader = DataLoader(Subset(nn_dynamics.train_dataset, train_idx), batch_size=64, shuffle=True)
+    test_loader  = DataLoader(Subset(nn_dynamics.test_dataset,  test_idx),  batch_size=64, shuffle=False)
 
 
     n_epochs = args.test_comparative_epochs
