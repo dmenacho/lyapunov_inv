@@ -173,8 +173,8 @@ class DynamicSampler:
 
 
 class ModelOCIFAR10Dynamics(DynamicSampler):
-    def __init__(self, model_instance, device='cpu', num_train_samples=1000):
-        super().__init__(model_instance, device, num_train_samples)
+    def __init__(self, model_instance, device='cpu', num_train_samples=1000, data_dir=None):
+        super().__init__(model_instance, device, num_train_samples, data_dir)
 
     #def _load_cifar10(self, num_samples):
     def _load_dataset(self, num_samples): # implemented with cifar10
@@ -200,8 +200,8 @@ class ModelOCIFAR10Dynamics(DynamicSampler):
 
 
 class ModelOMNISTDynamics(DynamicSampler):
-    def __init__(self, model_instance, device='cpu', num_train_samples=1000):
-        super().__init__(model_instance, device, num_train_samples)
+    def __init__(self, model_instance, device='cpu', num_train_samples=1000, data_dir=None):
+        super().__init__(model_instance, device, num_train_samples, data_dir)
 
     #def _load_cifar10(self, num_samples):
     def _load_dataset(self, num_samples: int) -> None:# implemented with cifar10
