@@ -48,11 +48,12 @@ def zubov_loss(
     return (pde_loss.mean() + origin_loss)
 
 class DynamicSampler:
-    def __init__(self, model_instance, device='cpu', num_train_samples=1000):
+    def __init__(self, model_instance, device='cpu', num_train_samples=1000, data_dir=None):
         self.device = device
         #self.model = TinyResNet().to(device)
         self.model = model_instance.to(device)
         self.state_dim = self.model.count_parameters()
+        self.data_dir = data_dir
         self._load_dataset(num_train_samples)
 
 

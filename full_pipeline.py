@@ -164,7 +164,12 @@ def main():
     # DYNAMIC SAMPLING
     ######################################################################################################
     
-    nn_dynamics = getattr(learners,f"ModelO{args.dataset}Dynamics")(getattr(dynamic_models,args.target_model_name)().to(device), device=device, num_train_samples=1000)
+    nn_dynamics = getattr(learners,f"ModelO{args.dataset}Dynamics")(
+        model_instance  = getattr(dynamic_models,args.target_model_name)().to(device),
+        device=device,
+        num_train_samples=args.num_train_samples,
+        data_dir=args.data_dir,
+        )
     print(f" State dimension: {nn_dynamics.state_dim}")
 
     x_train, f_train, stats, aux = nn_dynamics.generate_collocation_points(num_trajectories=args.num_trajectories,
