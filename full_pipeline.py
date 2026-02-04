@@ -47,7 +47,7 @@ def train_one_run(model, train_loader, test_loader, n_epochs=10, lr=0.01, device
     loss_fn = nn.CrossEntropyLoss()
     train_losses = []
     test_accs = []
-    for epoch in range(n_epochs):
+    for epoch in tqdm(range(n_epochs)):
         model.train()
         running_loss = 0.0
         n_batches = 0
