@@ -155,6 +155,8 @@ def main():
 
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
+    results_dir = Path(args.out_dir) /  "results" / f"{args.num_trajectories}_{args.traj_steps}_{args.gd_lr}" /args.run_id
+
     ######################################################################################################
     # DYNAMIC SAMPLING
     ######################################################################################################
@@ -183,7 +185,9 @@ def main():
     plt.title('Dynamic model (target model) loss)', fontsize=14)
     plt.grid(True, alpha=0.3)
     plt.yscale('log')
-    plt.savefig(f'{args.data_dir}/original_dynamic_traning_sample_{args.target_model_name}.png', dpi=150, bbox_inches='tight')
+    plt.savefig(f'{results_dir}/original_dynamic_traning_sample_{args.target_model_name}.png', dpi=150, bbox_inches='tight')
+
+    
 
     ######################################################################################################
     # LYAPONUV LEARNING
@@ -274,7 +278,7 @@ def main():
     plt.title('Lyapunov PINN Training Loss (ResNet Training Dynamics)', fontsize=14)
     plt.grid(True, alpha=0.3)
     plt.yscale('log')
-    plt.savefig(f'{args.data_dir}/lyapunov_resnet_training_loss.png', dpi=150, bbox_inches='tight')
+    plt.savefig(f'{results_dir}/lyapunov_resnet_training_loss.png', dpi=150, bbox_inches='tight')
 
     ######################################################################################################
     # COMPARATIVE TRAINING
