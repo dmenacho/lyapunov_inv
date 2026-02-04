@@ -168,7 +168,7 @@ def main():
         print(f"ModelO{args.dataset}Dynamics class has been not implemented")
     print(f" State dimension: {nn_dynamics.state_dim}")
 
-    x_train, f_train, aux = nn_dynamics.generate_collocation_points(num_trajectories=args.num_trajectories, num_steps=args.traj_steps)
+    x_train, f_train, stats, aux = nn_dynamics.generate_collocation_points(num_trajectories=args.num_trajectories, num_steps=args.traj_steps)
 
     loss=aux[0]
 
@@ -237,6 +237,7 @@ def main():
         alpha=args.alpha,
         constraint_threshold=args.constraint_threshold,
     )
+    ##################################################################################
     if "x_mean" in stats and "x_std" in stats:
         solver.set_normalization_stats(stats["x_mean"], stats["x_std"], stats.get("f_mean", None), stats.get("f_std", None))
     else:

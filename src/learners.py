@@ -5,7 +5,7 @@ import torch.nn.functional as F
 import numpy as np
 from pathlib import Path
 from tqdm import tqdm
-from typing import Tuple, List
+from typing import Tuple, List, Dict
 import matplotlib.pyplot as plt
 from torchvision import datasets, transforms
 
@@ -111,7 +111,7 @@ class DynamicSampler:
         
         return trajectory, velocities, aux
     
-    def generate_collocation_points(self, num_trajectories=50, num_steps=10) :
+    def generate_collocation_points(self, num_trajectories=50, num_steps=10, normalize = True) :
 
         all_states = []
         all_velocities = []
@@ -125,23 +125,33 @@ class DynamicSampler:
             all_states.append(trajectory)
             all_velocities.append(velocities)
         
-        x_array = np.vstack(all_states)
-        f_array = np.vstack(all_velocities)
+        x = np.vstack(all_states)
+        f = np.vstack(all_velocities)
     
-        x_mean = x_array.mean(axis=0)
-        x_std = x_array.std(axis=0) + 1e-8
-        x_array = (x_array - x_mean) / x_std
+        stats: Dict[str, np.ndarray] = {}
+        if normalize:
+            x_mean = x.mean(axis=0)
+            x_std = x.std(axis=0) + 1e-8
+            f_mean = f.mean(axis=0)
+            f_std = f.std(axis=0) + 1e-8
 
-        f_mean = f_array.mean(axis=0)
-        f_std = f_array.std(axis=0) + 1e-8
-        f_array = (f_array - f_mean) / f_std 
+            x_n = (x - x_mean) / x_std
+            f_n = (f - f_mean) / f_std
+
+            stats = {"x_mean": x_mean, "x_std": x_std, "f_mean": f_mean, "f_std": f_std}
+            x, f = x_n, f_n
+        else:
+            stats = {"x_mean": np.zeros(self.state_dim, dtype=np.float32),
+                     "x_std": np.ones(self.state_dim, dtype=np.float32),
+                     "f_mean": np.zeros(self.state_dim, dtype=np.float32),
+                     "f_std": np.ones(self.state_dim, dtype=np.float32)}
         
-        x_tensor = torch.tensor(x_array, dtype=torch.float32, device=self.device)
-        f_tensor = torch.tensor(f_array, dtype=torch.float32, device=self.device)
+        x_tensor = torch.tensor(x, dtype=torch.float32, device=self.device)
+        f_tensor = torch.tensor(f, dtype=torch.float32, device=self.device)
         
         print(f"Generated {x_tensor.shape[0]} collocation points")
         
-        return x_tensor, f_tensor, aux
+        return x_tensor, f_tensor, stats, aux
 
     def _load_dataset(self, num_samples):
         print("not implemented")
@@ -198,57 +208,6 @@ class ModelOMNISTDynamics(DynamicSampler):
         for X, y in loader:
             self.X_train.append(X.to(self.device))  # X shape: (B,1,28,28)
             self.y_train.append(y.to(self.device))
-
-
-#class LyapunovLearner:
-#    def __init__(self, lyap_model, optimizer , state_dim = 2, device= 'cpu'):
-#        self.device = device
-#        self.state_dim = state_dim
-#        #self.lyapunov = LyapunovNet(state_dim=state_dim, hidden_dim=256).to(device)
-#        self.lyapunov = lyap_model
-#        #self.optimizer = optim.Adam(self.lyapunov.parameters(), lr=1e-3)
-#        self.optimizer = optimizer
-#    
-#    def train(self, x_train, f_train, epochs=30, batch_size=126, mu=0.1, transform="exp"):
-#        n_samples = x_train.shape[0]
-#        losses = []
-#        
-#        for epoch in range(epochs):
-#            perm = torch.randperm(n_samples)
-#            x_shuffled = x_train[perm]
-#            f_shuffled = f_train[perm]
-#            
-#            epoch_loss = 0.0
-#            n_batches = 0
-#            
-#            pbar = tqdm(range(0, n_samples, batch_size), desc=f"Epoch {epoch + 1}/{epochs}", leave=False)
-#            
-#            for i in pbar:
-#                x_batch = x_shuffled[i:i+batch_size]
-#                f_batch = f_shuffled[i:i+batch_size]
-#                
-#                def f_torch_batch(x):
-#                    if x.shape[0] != f_batch.shape[0]:
-#                        indices = torch.randint(0, f_batch.shape[0], (x.shape[0],))
-#                        return f_batch[indices]
-#                    return f_batch
-#                
-#                loss = zubov_loss(x_batch, self.lyapunov, f_torch_batch, self.device, mu=mu, transform=transform)
-#                
-#                self.optimizer.zero_grad()
-#                loss.backward()
-#                torch.nn.utils.clip_grad_norm_(self.lyapunov.parameters(), max_norm=1.0)
-#                self.optimizer.step()
-#                
-#                epoch_loss += loss.item()
-#                n_batches += 1
-#                pbar.set_postfix(loss=loss.item())
-#            
-#            avg_loss = epoch_loss / n_batches
-#            losses.append(avg_loss)
-#            print(f"Epoch {epoch+1}/{epochs}: Loss = {avg_loss:.6f}")
-#        
-#        return losses
     
 
 class LyapunovLearner:
