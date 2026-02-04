@@ -164,10 +164,7 @@ def main():
     # DYNAMIC SAMPLING
     ######################################################################################################
     
-    try:
-        nn_dynamics = getattr(learners,f"ModelO{args.dataset}Dynamics")(getattr(dynamic_models,args.target_model_name)().to(device), device=device, num_train_samples=1000)
-    except:
-        print(f"ModelO{args.dataset}Dynamics class has been not implemented")
+    nn_dynamics = getattr(learners,f"ModelO{args.dataset}Dynamics")(getattr(dynamic_models,args.target_model_name)().to(device), device=device, num_train_samples=1000)
     print(f" State dimension: {nn_dynamics.state_dim}")
 
     x_train, f_train, stats, aux = nn_dynamics.generate_collocation_points(num_trajectories=args.num_trajectories,

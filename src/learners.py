@@ -182,10 +182,12 @@ class ModelOCIFAR10Dynamics(DynamicSampler):
             transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
         ])
         
-        dataset = datasets.CIFAR10(root='./data', train=True, download=True, transform=transform)
+        #dataset = datasets.CIFAR10(root='./data', train=True, download=True, transform=transform)
+        self.dataset_train = datasets.MNIST(root=self.data_dir, train=True, download=True, transform=transform)
+        self.dataset_test = datasets.MNIST(root=self.data_dir, train=False, download=True, transform=transform)
         
-        indices = np.random.choice(len(dataset), num_samples, replace=False)
-        subset = torch.utils.data.Subset(dataset, indices)
+        indices = np.random.choice(len(self.dataset_train), num_samples, replace=False)
+        subset = torch.utils.data.Subset(self.dataset_train, indices)
         loader = torch.utils.data.DataLoader(subset, batch_size=64, shuffle=False)
         
         self.X_train = []
