@@ -209,6 +209,7 @@ class ModelOMNISTDynamics(DynamicSampler):
             [
                 transforms.ToTensor(),
                 transforms.Grayscale(num_output_channels=3),
+                lambda target: print(target.shape),
                 transforms.Normalize((0.1307,0.1307,0.1307,), (0.3081,0.3081,0.3081,)),  # standard MNIST mean/std
             ]
         )
