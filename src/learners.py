@@ -84,6 +84,7 @@ class DynamicSampler:
         trajectory = [w_init.copy()]
         f_list: List[np.ndarray] = []
         grad_list: List[np.ndarray] = []
+        losses: List[np.ndarray] = []
         
         for step in range(num_steps):
             batch_idx = np.random.randint(0, len(self.X_train))
@@ -109,13 +110,14 @@ class DynamicSampler:
             
             w_current = self.flatten_params(model)
             trajectory.append(w_current.copy())
+            losses.append(loss.cpu().detach().numpy())
         
         traj = np.asarray(trajectory, dtype=np.float32)  # (T+1, D)
         f_arr = np.asarray(f_list, dtype=np.float32)     # (T, D)
         f_arr = np.vstack([f_arr[0:1], f_arr])           # (T+1, D), repeat first at time 0
 
         grads = np.asarray(grad_list, dtype=np.float32) if return_gradients else None
-        aux = (loss.cpu().detach().numpy(),)
+        aux = (losses,)
         return traj, f_arr, grads, aux 
     
     def generate_collocation_points(self, num_trajectories=50, num_steps=10, normalize = True) :
