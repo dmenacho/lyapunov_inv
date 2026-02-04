@@ -303,11 +303,11 @@ def main():
 
     n_train = 10000
     n_test  = 500
-    train_idx = np.random.choice(len(nn_dynamics.train_dataset), n_train, replace=False)
-    test_idx  = np.random.choice(len(nn_dynamics.test_dataset),  n_test,  replace=False)
+    train_idx = np.random.choice(len(nn_dynamics.dataset_train), n_train, replace=False)
+    test_idx  = np.random.choice(len(nn_dynamics.dataset_test),  n_test,  replace=False)
 
-    train_loader = DataLoader(Subset(nn_dynamics.train_dataset, train_idx), batch_size=64, shuffle=True)
-    test_loader  = DataLoader(Subset(nn_dynamics.test_dataset,  test_idx),  batch_size=64, shuffle=False)
+    train_loader = DataLoader(Subset(nn_dynamics.dataset_train, train_idx), batch_size=64, shuffle=True)
+    test_loader  = DataLoader(Subset(nn_dynamics.dataset_test,  test_idx),  batch_size=64, shuffle=False)
 
 
     n_epochs = args.test_comparative_epochs
