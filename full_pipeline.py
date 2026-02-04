@@ -168,7 +168,11 @@ def main():
         print(f"ModelO{args.dataset}Dynamics class has been not implemented")
     print(f" State dimension: {nn_dynamics.state_dim}")
 
-    x_train, f_train, stats, aux = nn_dynamics.generate_collocation_points(num_trajectories=args.num_trajectories, num_steps=args.traj_steps)
+    x_train, f_train, stats, aux = nn_dynamics.generate_collocation_points(num_trajectories=args.num_trajectories,
+        traj_steps=args.traj_steps,
+        learning_rate=args.gd_lr,
+        w_init_scale=args.w_init_scale,
+        normalize=True,)
 
     loss=aux[0]
 

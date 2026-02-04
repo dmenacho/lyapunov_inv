@@ -120,16 +120,20 @@ class DynamicSampler:
         aux = (losses,)
         return traj, f_arr, grads, aux 
     
-    def generate_collocation_points(self, num_trajectories=50, num_steps=10, normalize = True) :
+    def generate_collocation_points(self, num_trajectories: int,
+                                    traj_steps: int,
+                                    learning_rate: float,
+                                    w_init_scale: float,
+                                    normalize: bool = True,) :
 
         all_states = []
         all_velocities = []
         learning_rate_range=0.01
         for _ in tqdm(range(num_trajectories), desc="Generating trajectories"):
-            w_init = np.random.randn(self.state_dim).astype(np.float32) * 0.05
+            w_init = (np.random.randn(self.state_dim).astype(np.float32) * w_init_scale)
             # lr = np.random.uniform(*learning_rate_range)
             
-            trajectory, velocities, _, aux = self.simulate_trajectory(w_init, learning_rate_range, num_steps, return_gradients=False)
+            trajectory, velocities, _, aux = self.simulate_trajectory(w_init, learning_rate, traj_steps, return_gradients=False)
             
             all_states.append(trajectory)
             all_velocities.append(velocities)
