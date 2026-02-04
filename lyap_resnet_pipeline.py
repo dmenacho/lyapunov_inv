@@ -443,8 +443,8 @@ class StabilityConstrainedNN:
             V_vals.append(float(V.item()))
             V_grad = torch.autograd.grad(V.sum(), state, create_graph=False)[0]  # (1,D)
 
-            # grad_raw = grads_n[t]
-            grad_raw = gradients[t] # this is ∇L
+            grad_raw = grads_n[t]
+            #grad_raw = gradients[t] # this is ∇L
             f_raw = -grad_raw # f = -∇L
 
             if self.f_mean is not None and self.f_std is not None:

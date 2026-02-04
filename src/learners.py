@@ -74,24 +74,33 @@ class DynamicSampler:
             )
             idx += size
 
-    def simulate_trajectory(self, w_init, learning_rate, num_steps):
+    def simulate_trajectory(self, w_init: np.ndarray, learning_rate: float, num_steps: int, return_gradients: bool = True):
         model = self.model.to(self.device)
         self.unflatten_params(w_init, model)
         
-        optimizer = optim.SGD(model.parameters(), lr=learning_rate)
+        #optimizer = optim.SGD(model.parameters(), lr=learning_rate)
         loss_fn = nn.CrossEntropyLoss()
         
         trajectory = [w_init.copy()]
+        f_list: List[np.ndarray] = []
+        grad_list: List[np.ndarray] = []
         
         for step in range(num_steps):
             batch_idx = np.random.randint(0, len(self.X_train))
             X_batch = self.X_train[batch_idx]
             y_batch = self.y_train[batch_idx]
             
+            model.zero_grad(set_to_none=True)
             y_pred = model(X_batch)
             loss = loss_fn(y_pred, y_batch)
-            
             loss.backward()
+
+            grad_flat = torch.cat([p.grad.flatten() for p in model.parameters()]).detach()
+            f = (-grad_flat).cpu().numpy().astype(np.float32)  # f(w) = -∇L(w)
+
+            if return_gradients:
+                grad_list.append(grad_flat.cpu().numpy().astype(np.float32))
+            f_list.append(f)
 
             with torch.no_grad():
                 for param in model.parameters():
@@ -101,15 +110,13 @@ class DynamicSampler:
             w_current = self.flatten_params(model)
             trajectory.append(w_current.copy())
         
-        trajectory = np.array(trajectory)
-        
-        velocities = np.diff(trajectory, axis=0) * learning_rate
-        # velocities = np.diff(trajectory, axis=0)
-        velocities = np.vstack([velocities[0], velocities])
+        traj = np.asarray(trajectory, dtype=np.float32)  # (T+1, D)
+        f_arr = np.asarray(f_list, dtype=np.float32)     # (T, D)
+        f_arr = np.vstack([f_arr[0:1], f_arr])           # (T+1, D), repeat first at time 0
 
+        grads = np.asarray(grad_list, dtype=np.float32) if return_gradients else None
         aux = (loss.cpu().detach().numpy(),)
-        
-        return trajectory, velocities, aux
+        return traj, f_arr, grads, aux 
     
     def generate_collocation_points(self, num_trajectories=50, num_steps=10, normalize = True) :
 
@@ -120,7 +127,7 @@ class DynamicSampler:
             w_init = np.random.randn(self.state_dim).astype(np.float32) * 0.05
             # lr = np.random.uniform(*learning_rate_range)
             
-            trajectory, velocities, aux = self.simulate_trajectory(w_init, learning_rate_range, num_steps)
+            trajectory, velocities, _, aux = self.simulate_trajectory(w_init, learning_rate_range, num_steps, return_gradients=False)
             
             all_states.append(trajectory)
             all_velocities.append(velocities)

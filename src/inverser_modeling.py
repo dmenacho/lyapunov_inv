@@ -45,7 +45,7 @@ class StabilityConstrainedNN:
            trajectory: (T+1, D)
            gradients:  (T, D)
         """
-        traj_np, _, grads_np = self.nn_dynamics.simulate_trajectory(
+        traj_np, _, grads_np , aux = self.nn_dynamics.simulate_trajectory(
             w_init=w_init, learning_rate=self.learning_rate, num_steps=self.traj_steps, return_gradients=True
         )
         assert grads_np is not None
