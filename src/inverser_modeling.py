@@ -18,6 +18,7 @@ class StabilityConstrainedNN:
         device: torch.device,
         alpha: float = 0.05,
         constraint_threshold: float = 1.0,
+        normalization_set: bool = True
     ) -> None:
         self.lyapunov = lyapunov.to(device)
         self.lyapunov.eval()
@@ -27,6 +28,7 @@ class StabilityConstrainedNN:
         self.traj_steps = traj_steps
         self.alpha = alpha
         self.constraint_threshold = constraint_threshold
+        self.normalization_set = normalization_set
 
         self.x_mean: Optional[torch.Tensor] = None
         self.x_std: Optional[torch.Tensor] = None
@@ -77,8 +79,10 @@ class StabilityConstrainedNN:
             V_vals.append(float(V.item()))
             V_grad = torch.autograd.grad(V.sum(), state, create_graph=False)[0]  # (1,D)
 
-            # grad_raw = grads_n[t]
-            grad_raw = gradients[t] # this is ∇L
+            if self.normalization_set:
+                grad_raw = gradients[t] # this is ∇L
+            else:
+                grad_raw = grads_n[t]
             f_raw = -grad_raw # f = -∇L
 
             if self.f_mean is not None and self.f_std is not None:

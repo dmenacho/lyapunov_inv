@@ -127,6 +127,8 @@ def build_parser():
     f.add_argument("--alpha", type=float, default=0.05)
     f.add_argument("--constraint_threshold", type=float, default=1.0)
     f.add_argument("--verbose_every", type=int, default=5)
+    f.add_argument("--set_normalization", type=bool, default=True)
+    
 
     f.add_argument("--test_comparative_epochs", type=int, default=50, help="number of epochs to test method.")
     f.add_argument("--test_comparative_lr", type=float, default=0.01)
@@ -162,10 +164,7 @@ def main():
     # DYNAMIC SAMPLING
     ######################################################################################################
     
-    #nn_dynamics = ModelOcifar10Dynamics(TinyResNet().to(device), device=device, num_train_samples=1000)
-    #nn_dynamics = ModelOcifar10Dynamics(TinyResNet().to(device), device=device, num_train_samples=1000)
     try:
-        #nn_dynamics = getattr(learners,f"ModelO{args.dataset}10Dynamics")(TinyResNet().to(device), device=device, num_train_samples=1000)
         nn_dynamics = getattr(learners,f"ModelO{args.dataset}Dynamics")(getattr(dynamic_models,args.target_model_name)().to(device), device=device, num_train_samples=1000)
     except:
         print(f"ModelO{args.dataset}Dynamics class has been not implemented")
@@ -245,12 +244,13 @@ def main():
         device=device,
         alpha=args.alpha,
         constraint_threshold=args.constraint_threshold,
+        normalization_set= args.set_normalization
     )
-    ##################################################################################
-    if "x_mean" in stats and "x_std" in stats:
-        solver.set_normalization_stats(stats["x_mean"], stats["x_std"], stats.get("f_mean", None), stats.get("f_std", None))
-    else:
-        print("[stable] warning: no x_mean/x_std in checkpoint; using fallback normalization.")
+    if args.set_normalization:
+        if "x_mean" in stats and "x_std" in stats:
+            solver.set_normalization_stats(stats["x_mean"], stats["x_std"], stats.get("f_mean", None), stats.get("f_std", None))
+        else:
+            print("[stable] warning: no x_mean/x_std in checkpoint; using fallback normalization.")
 
     stable_weights, stable_meta = solver.discover_stable_initializations(
         n_samples=args.search_samples,
