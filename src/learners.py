@@ -216,7 +216,7 @@ class ModelOMNISTDynamics(DynamicSampler):
         t_transform = transforms.Compose(
             [
                 transforms.ToTensor(),
-                transforms.Normalize((0.1307,), (0.3081,)),  # standard MNIST mean/std
+        #        transforms.Normalize((0.1307,), (0.3081,)),  # standard MNIST mean/std
             ]
         )
         self.dataset_train = datasets.MNIST(root=self.data_dir, train=True, download=True, transform=transform, target_transform = t_transform)
