@@ -209,16 +209,16 @@ class ModelOMNISTDynamics(DynamicSampler):
             [
                 transforms.ToTensor(),
                 transforms.Grayscale(num_output_channels=3),
-                #transforms.Normalize((0.1307,0.1307,0.1307,), (0.3081,0.3081,0.3081,)),  # standard MNIST mean/std
+                transforms.Normalize((0.1307,), (0.3081,)),  # standard MNIST mean/std
             ]
         )
 
-        t_transform = transforms.Compose(
-            [
-                transforms.ToTensor(),
-        #        transforms.Normalize((0.1307,), (0.3081,)),  # standard MNIST mean/std
-            ]
-        )
+        t_transform = lambda target: torch.tensor(target, dtype=torch.long)
+        #    [
+        #        transforms.ToTensor(),
+        ##        transforms.Normalize((0.1307,), (0.3081,)),  # standard MNIST mean/std
+        #    ]
+        #)
         self.dataset_train = datasets.MNIST(root=self.data_dir, train=True, download=True, transform=transform, target_transform = t_transform)
         self.dataset_test = datasets.MNIST(root=self.data_dir, train=False, download=True, transform=transform, target_transform = t_transform)
 
