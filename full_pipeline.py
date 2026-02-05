@@ -107,6 +107,7 @@ def build_parser():
     f.add_argument("--num_trajectories", type=int, default=200)
     f.add_argument("--traj_steps", type=int, default=50)
     f.add_argument("--gd_lr", type=float, default=1e-2)
+    f.add_argument("--batch_size", type=int, default=64)
     #f.add_argument("--data_type", type=str, default="CIFAR10", choices=["cifar", "nmist"])
 
     f.add_argument("--w_init_scale", type=float, default=0.5)
@@ -169,6 +170,7 @@ def main():
         device=device,
         num_train_samples=args.num_train_samples,
         data_dir=args.data_dir,
+        batch_size = args.batch_size
         )
     print(f" State dimension: {nn_dynamics.state_dim}")
 

@@ -48,13 +48,14 @@ def zubov_loss(
     return (pde_loss.mean() + origin_loss)
 
 class DynamicSampler:
-    def __init__(self, model_instance, device='cpu', num_train_samples=1000, data_dir=None):
+    def __init__(self, model_instance, device='cpu', num_train_samples=1000, data_dir=None,batch_size = 64):
         self.device = device
         #self.model = TinyResNet().to(device)
         self.model = model_instance.to(device)
         #self.state_dim = self.model.count_parameters()
         self.state_dim = sum(p.numel() for p in self.model.parameters())
         self.data_dir = data_dir
+        self.batch_size = batch_size
         self._load_dataset(num_train_samples)
 
 
@@ -174,8 +175,8 @@ class DynamicSampler:
 
 
 class ModelOCIFAR10Dynamics(DynamicSampler):
-    def __init__(self, model_instance, device='cpu', num_train_samples=1000, data_dir=None):
-        super().__init__(model_instance, device, num_train_samples, data_dir)
+    def __init__(self, model_instance, device='cpu', num_train_samples=1000, data_dir=None, batch_size = 64):
+        super().__init__(model_instance, device, num_train_samples, data_dir,batch_size = batch_size)
 
     #def _load_cifar10(self, num_samples):
     def _load_dataset(self, num_samples): # implemented with cifar10
@@ -191,7 +192,7 @@ class ModelOCIFAR10Dynamics(DynamicSampler):
         
         indices = np.random.choice(len(self.dataset_train), num_samples, replace=False)
         subset = torch.utils.data.Subset(self.dataset_train, indices)
-        loader = torch.utils.data.DataLoader(subset, batch_size=64, shuffle=False)
+        loader = torch.utils.data.DataLoader(subset, batch_size=self.batch_size, shuffle=False)
         
         self.X_train = []
         self.y_train = []
