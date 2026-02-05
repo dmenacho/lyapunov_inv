@@ -291,16 +291,6 @@ def main():
     print("Num stable weights:", len(stable_weights))
     print("State dim:", stable_weights[0].shape[0])
 
-    #transform = transforms.Compose([
-    #    transforms.ToTensor(),
-    #    transforms.Normalize((0.5,0.5,0.5),(0.5,0.5,0.5))
-    #    ])
-
-    ##train_dataset = datasets.CIFAR10(root='./data', train=True, download=True, transform=transform)
-    #train_dataset = getattr(datasets,args.dataset)(root='./data', train=True, download=True, transform=transform)
-    ##test_dataset  = datasets.CIFAR10(root='./data', train=False, download=True, transform=transform)
-    #test_dataset = getattr(datasets,args.dataset)(root='./data', train=False, download=True, transform=transform)
-
     n_train = 10000
     n_test  = 500
     train_idx = np.random.choice(len(nn_dynamics.dataset_train), n_train, replace=False)
@@ -336,8 +326,11 @@ def main():
     accs_random = []
 
     for i in tqdm(range(n_runs), desc="Random inits"):
+        scales = np.random.uniform(0.1, 1)
+        w_random = np.random.randn(stable_weights[i].shape[0]).astype(np.float32) * scales
         model = getattr(dynamic_models,args.target_model_name)().to(device)
-        tr_loss, te_acc = train_one_run(model, train_loader, test_loader, n_epochs=n_epochs, lr=lr, device= device)
+        set_model_weights(model, w_random)
+        tr_loss, te_acc = train_one_run(model, train_loader, test_loader, n_epochs=n_epochs, lr=lr)
         losses_random.append(tr_loss)
         accs_random.append(te_acc)
 
