@@ -181,7 +181,7 @@ class ModelOCIFAR10Dynamics(DynamicSampler):
     #def _load_cifar10(self, num_samples):
     def _load_dataset(self, num_samples): # implemented with cifar10
         transform = transforms.Compose([
-            transforms.ToTensor(),
+            #transforms.ToTensor(),
             transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5)),
             #transforms.Resize((224,224))
         ])
@@ -212,7 +212,7 @@ class ModelOMNISTDynamics(DynamicSampler):
             [
                 transforms.ToTensor(),
                 #transforms.Grayscale(num_output_channels=3),
-                lambda x: torch.tile(x,(3,1,1)),
+                #lambda x: torch.tile(x,(3,1,1)),
                 transforms.Normalize((0.1307,0.1307,0.1307,), (0.3081,0.3081,0.3081,)),  # standard MNIST mean/std
                 #transforms.Resize((224,224))
             ]
