@@ -89,7 +89,7 @@ class DynamicSampler:
         grad_list: List[np.ndarray] = []
         losses: List[np.ndarray] = []
         
-        for step in range(num_steps):
+        for step in tqdm(range(num_steps)):
             batch_idx = np.random.randint(0, len(self.X_train))
             X_batch = self.X_train[batch_idx]
             y_batch = self.y_train[batch_idx]
