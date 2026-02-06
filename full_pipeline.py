@@ -383,7 +383,7 @@ def main():
     plt.legend()
 
     plt.tight_layout()
-    plt.savefig(f'{args.data_dir}/Comparative_training.png', dpi=150, bbox_inches='tight')
+    plt.savefig(f'{results_dir}/Comparative_training.png', dpi=150, bbox_inches='tight')
 
     # Final accuracy histograms
     final_acc_stable = accs_stable[:, -1]
@@ -398,7 +398,7 @@ def main():
     plt.title("Final performance distribution")
     plt.grid(alpha=0.3)
     plt.legend()
-    plt.savefig(f'{args.data_dir}/Final performance distribution.png', dpi=150, bbox_inches='tight')
+    plt.savefig(f'{results_dir}/Final performance distribution.png', dpi=150, bbox_inches='tight')
 
     print("Lyapunov init: mean final acc = ", final_acc_stable.mean())
     print("Random init:   mean final acc = ", final_acc_random.mean())
