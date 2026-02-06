@@ -1346,3 +1346,472 @@ class ConvNeXtV2Tiny(nn.Module):
         x = torch.flatten(x, 1)
         x = self.head(x)
         return x
+
+
+import torch
+import torch.nn as nn
+import torch.nn.functional as F
+from typing import List, Optional
+
+# ------------------------------------------------------------
+# MobileNetV1 Components
+# ------------------------------------------------------------
+
+class DepthwiseSeparableConv(nn.Module):
+    """Depthwise Separable Convolution for MobileNetV1"""
+    def __init__(self, in_channels, out_channels, stride=1):
+        super().__init__()
+        self.depthwise = nn.Conv2d(in_channels, in_channels, kernel_size=3, 
+                                  stride=stride, padding=1, groups=in_channels, bias=False)
+        self.bn1 = nn.BatchNorm2d(in_channels)
+        self.pointwise = nn.Conv2d(in_channels, out_channels, kernel_size=1, bias=False)
+        self.bn2 = nn.BatchNorm2d(out_channels)
+        
+    def forward(self, x):
+        x = F.relu6(self.bn1(self.depthwise(x)))
+        x = F.relu6(self.bn2(self.pointwise(x)))
+        return x
+
+
+class MobileNetV1Tiny(nn.Module):
+    """Tiny MobileNetV1 for MNIST"""
+    
+    def __init__(self, num_classes=10, width_multiplier=0.25):
+        super().__init__()
+        
+        # Adjust channels with width multiplier
+        def conv_bn(inp, oup, stride):
+            return nn.Sequential(
+                nn.Conv2d(inp, oup, 3, stride, 1, bias=False),
+                nn.BatchNorm2d(oup),
+                nn.ReLU6(inplace=True)
+            )
+        
+        # Build layers
+        layers = []
+        
+        # First conv layer (adjusted for MNIST)
+        input_channel = int(8 * width_multiplier)
+        layers.append(conv_bn(1, input_channel, 2))  # 28x28 -> 14x14
+        
+        # Depthwise separable conv blocks
+        cfg = [
+            # t, c, n, s (expansion, output channels, repeats, stride)
+            [1, 16, 1, 1],
+            [1, 32, 2, 2],
+            [1, 64, 2, 2],
+            [1, 128, 2, 1],
+        ]
+        
+        for t, c, n, s in cfg:
+            output_channel = int(c * width_multiplier)
+            for i in range(n):
+                stride = s if i == 0 else 1
+                layers.append(DepthwiseSeparableConv(input_channel, output_channel, stride))
+                input_channel = output_channel
+        
+        # Final layers
+        self.features = nn.Sequential(*layers)
+        self.avgpool = nn.AdaptiveAvgPool2d(1)
+        self.classifier = nn.Linear(input_channel, num_classes)
+        
+        # Initialize weights
+        self._init_weights()
+    
+    def _init_weights(self):
+        for m in self.modules():
+            if isinstance(m, nn.Conv2d):
+                nn.init.kaiming_normal_(m.weight, mode='fan_out')
+                if m.bias is not None:
+                    nn.init.zeros_(m.bias)
+            elif isinstance(m, nn.BatchNorm2d):
+                nn.init.ones_(m.weight)
+                nn.init.zeros_(m.bias)
+            elif isinstance(m, nn.Linear):
+                nn.init.normal_(m.weight, 0, 0.01)
+                nn.init.zeros_(m.bias)
+    
+    def forward(self, x):
+        x = self.features(x)
+        x = self.avgpool(x)
+        x = x.view(x.size(0), -1)
+        x = self.classifier(x)
+        return x
+
+
+# ------------------------------------------------------------
+# MobileNetV2 Components
+# ------------------------------------------------------------
+
+class InvertedResidual(nn.Module):
+    """Inverted Residual Block for MobileNetV2"""
+    def __init__(self, inp, oup, stride, expand_ratio):
+        super().__init__()
+        self.stride = stride
+        assert stride in [1, 2]
+        
+        hidden_dim = int(round(inp * expand_ratio))
+        self.use_res_connect = self.stride == 1 and inp == oup
+        
+        layers = []
+        if expand_ratio != 1:
+            # Pointwise expansion
+            layers.append(nn.Conv2d(inp, hidden_dim, 1, 1, 0, bias=False))
+            layers.append(nn.BatchNorm2d(hidden_dim))
+            layers.append(nn.ReLU6(inplace=True))
+        
+        # Depthwise convolution
+        layers.append(nn.Conv2d(hidden_dim, hidden_dim, 3, stride, 1, 
+                               groups=hidden_dim, bias=False))
+        layers.append(nn.BatchNorm2d(hidden_dim))
+        layers.append(nn.ReLU6(inplace=True))
+        
+        # Pointwise projection
+        layers.append(nn.Conv2d(hidden_dim, oup, 1, 1, 0, bias=False))
+        layers.append(nn.BatchNorm2d(oup))
+        
+        self.conv = nn.Sequential(*layers)
+    
+    def forward(self, x):
+        if self.use_res_connect:
+            return x + self.conv(x)
+        else:
+            return self.conv(x)
+
+
+class MobileNetV2Tiny(nn.Module):
+    """Tiny MobileNetV2 for MNIST"""
+    
+    def __init__(self, num_classes=10, width_mult=0.25):
+        super().__init__()
+        
+        # Config for tiny version
+        inverted_residual_setting = [
+            # t, c, n, s (expansion, output channels, repeats, stride)
+            [1, 8, 1, 1],    # 14x14
+            [3, 16, 2, 2],   # 7x7
+            [3, 32, 3, 2],   # 4x4
+            [3, 64, 1, 1],   # 4x4
+        ]
+        
+        # Building first layer
+        input_channel = int(8 * width_mult)
+        last_channel = int(128 * width_mult)
+        
+        features = [nn.Sequential(
+            nn.Conv2d(1, input_channel, 3, 2, 1, bias=False),  # 28x28 -> 14x14
+            nn.BatchNorm2d(input_channel),
+            nn.ReLU6(inplace=True)
+        )]
+        
+        # Building inverted residual blocks
+        for t, c, n, s in inverted_residual_setting:
+            output_channel = int(c * width_mult)
+            for i in range(n):
+                stride = s if i == 0 else 1
+                features.append(InvertedResidual(input_channel, output_channel, 
+                                                stride, expand_ratio=t))
+                input_channel = output_channel
+        
+        # Building last layers
+        features.append(nn.Sequential(
+            nn.Conv2d(input_channel, last_channel, 1, 1, 0, bias=False),
+            nn.BatchNorm2d(last_channel),
+            nn.ReLU6(inplace=True)
+        ))
+        
+        self.features = nn.Sequential(*features)
+        self.avgpool = nn.AdaptiveAvgPool2d(1)
+        self.classifier = nn.Sequential(
+            nn.Dropout(0.2),
+            nn.Linear(last_channel, num_classes),
+        )
+        
+        # Initialize weights
+        self._init_weights()
+    
+    def _init_weights(self):
+        for m in self.modules():
+            if isinstance(m, nn.Conv2d):
+                nn.init.kaiming_normal_(m.weight, mode='fan_out')
+                if m.bias is not None:
+                    nn.init.zeros_(m.bias)
+            elif isinstance(m, nn.BatchNorm2d):
+                nn.init.ones_(m.weight)
+                nn.init.zeros_(m.bias)
+            elif isinstance(m, nn.Linear):
+                nn.init.normal_(m.weight, 0, 0.01)
+                nn.init.zeros_(m.bias)
+    
+    def forward(self, x):
+        x = self.features(x)
+        x = self.avgpool(x)
+        x = x.view(x.size(0), -1)
+        x = self.classifier(x)
+        return x
+
+
+# ------------------------------------------------------------
+# MobileNetV3 Components
+# ------------------------------------------------------------
+
+class HSwish(nn.Module):
+    """Hard Swish activation"""
+    def __init__(self, inplace=True):
+        super().__init__()
+        self.inplace = inplace
+    
+    def forward(self, x):
+        return x * F.relu6(x + 3, inplace=self.inplace) / 6
+
+
+class HardSigmoid(nn.Module):
+    """Hard Sigmoid activation"""
+    def __init__(self, inplace=True):
+        super().__init__()
+        self.inplace = inplace
+    
+    def forward(self, x):
+        return F.relu6(x + 3, inplace=self.inplace) / 6
+
+
+class SqueezeExcitation(nn.Module):
+    """Squeeze and Excitation block"""
+    def __init__(self, channel, reduction=4):
+        super().__init__()
+        reduced_channels = max(1, channel // reduction)
+        self.avg_pool = nn.AdaptiveAvgPool2d(1)
+        self.fc = nn.Sequential(
+            nn.Linear(channel, reduced_channels, bias=False),
+            nn.ReLU(inplace=True),
+            nn.Linear(reduced_channels, channel, bias=False),
+            HardSigmoid()
+        )
+    
+    def forward(self, x):
+        b, c, _, _ = x.size()
+        y = self.avg_pool(x).view(b, c)
+        y = self.fc(y).view(b, c, 1, 1)
+        return x * y.expand_as(x)
+
+
+class MobileNetV3Block(nn.Module):
+    """MobileNetV3 building block"""
+    def __init__(self, in_channels, out_channels, kernel_size, stride, 
+                 use_se, activation, expand_ratio):
+        super().__init__()
+        self.stride = stride
+        self.use_res_connect = stride == 1 and in_channels == out_channels
+        
+        hidden_dim = int(round(in_channels * expand_ratio))
+        
+        layers = []
+        
+        # Expansion phase
+        if expand_ratio != 1:
+            layers.append(nn.Conv2d(in_channels, hidden_dim, 1, 1, 0, bias=False))
+            layers.append(nn.BatchNorm2d(hidden_dim))
+            layers.append(activation())
+        
+        # Depthwise convolution
+        layers.append(nn.Conv2d(hidden_dim, hidden_dim, kernel_size, stride, 
+                               kernel_size//2, groups=hidden_dim, bias=False))
+        layers.append(nn.BatchNorm2d(hidden_dim))
+        layers.append(activation())
+        
+        # Squeeze and excitation
+        if use_se:
+            layers.append(SqueezeExcitation(hidden_dim))
+        
+        # Projection
+        layers.append(nn.Conv2d(hidden_dim, out_channels, 1, 1, 0, bias=False))
+        layers.append(nn.BatchNorm2d(out_channels))
+        
+        self.block = nn.Sequential(*layers)
+    
+    def forward(self, x):
+        if self.use_res_connect:
+            return x + self.block(x)
+        else:
+            return self.block(x)
+
+
+class MobileNetV3Tiny(nn.Module):
+    """Tiny MobileNetV3 for MNIST"""
+    
+    def __init__(self, num_classes=10, mode='small', width_mult=0.25):
+        super().__init__()
+        
+        # Configuration for tiny version
+        if mode == 'small':
+            # Small config for MNIST
+            cfgs = [
+                # k, exp, c,  se,     nl,  s
+                [3,  1,   8,  False, 'RE', 2],  # 28x28 -> 14x14
+                [3,  4,   16, False, 'RE', 2],  # 14x14 -> 7x7
+                [3,  4,   24, False, 'RE', 2],  # 7x7 -> 4x4
+                [3,  3,   32, True,  'HS', 1],  # 4x4
+            ]
+            last_channel = 64
+        else:  # large
+            cfgs = [
+                [3,  1,   12, False, 'RE', 2],
+                [3,  4,   24, False, 'RE', 2],
+                [3,  3,   32, False, 'RE', 2],
+                [5,  3,   48, True,  'HS', 1],
+            ]
+            last_channel = 96
+        
+        # Scale channels
+        def scale_channels(channels):
+            return int(channels * width_mult)
+        
+        # Building first layer
+        input_channel = scale_channels(8)
+        self.first_conv = nn.Sequential(
+            nn.Conv2d(1, input_channel, 3, 2, 1, bias=False),
+            nn.BatchNorm2d(input_channel),
+            HSwish() if mode == 'large' else nn.ReLU6(inplace=True)
+        )
+        
+        # Building blocks
+        blocks = []
+        for k, exp, c, se, nl, s in cfgs:
+            output_channel = scale_channels(c)
+            exp_channel = input_channel * exp
+            
+            activation = HSwish if nl == 'HS' else nn.ReLU6
+            
+            blocks.append(MobileNetV3Block(
+                input_channel, output_channel, k, s, 
+                se, activation, exp
+            ))
+            input_channel = output_channel
+        
+        self.blocks = nn.Sequential(*blocks)
+        
+        # Building last layers
+        last_conv_channels = scale_channels(last_channel)
+        self.last_conv = nn.Sequential(
+            nn.Conv2d(input_channel, last_conv_channels, 1, 1, 0, bias=False),
+            nn.BatchNorm2d(last_conv_channels),
+            HSwish() if mode == 'large' else nn.ReLU6(inplace=True)
+        )
+        
+        self.avgpool = nn.AdaptiveAvgPool2d(1)
+        self.classifier = nn.Sequential(
+            nn.Linear(last_conv_channels, scale_channels(32)),
+            HSwish() if mode == 'large' else nn.ReLU6(inplace=True),
+            nn.Dropout(0.2),
+            nn.Linear(scale_channels(32), num_classes)
+        )
+        
+        self._init_weights()
+    
+    def _init_weights(self):
+        for m in self.modules():
+            if isinstance(m, nn.Conv2d):
+                nn.init.kaiming_normal_(m.weight, mode='fan_out')
+                if m.bias is not None:
+                    nn.init.zeros_(m.bias)
+            elif isinstance(m, nn.BatchNorm2d):
+                nn.init.ones_(m.weight)
+                nn.init.zeros_(m.bias)
+            elif isinstance(m, nn.Linear):
+                nn.init.normal_(m.weight, 0, 0.01)
+                nn.init.zeros_(m.bias)
+    
+    def forward(self, x):
+        x = self.first_conv(x)      # 28x28 -> 14x14
+        x = self.blocks(x)          # 14x14 -> 4x4
+        x = self.last_conv(x)       # Feature refinement
+        x = self.avgpool(x)         # Global pooling
+        x = x.view(x.size(0), -1)   # Flatten
+        x = self.classifier(x)      # Classify
+        return x
+
+
+# ------------------------------------------------------------
+# Extremely Tiny MobileNet Variants
+# ------------------------------------------------------------
+
+class MobileNetMicro(nn.Module):
+    """Micro MobileNet for extreme memory constraints"""
+    
+    def __init__(self, num_classes=10):
+        super().__init__()
+        
+        self.features = nn.Sequential(
+            # Stem: 28x28 -> 14x14
+            nn.Conv2d(1, 4, 3, stride=2, padding=1, bias=False),
+            nn.BatchNorm2d(4),
+            nn.ReLU6(inplace=True),
+            
+            # Depthwise separable conv 1: 14x14 -> 7x7
+            nn.Conv2d(4, 4, 3, stride=2, padding=1, groups=4, bias=False),
+            nn.BatchNorm2d(4),
+            nn.ReLU6(inplace=True),
+            nn.Conv2d(4, 8, 1, bias=False),
+            nn.BatchNorm2d(8),
+            nn.ReLU6(inplace=True),
+            
+            # Depthwise separable conv 2: 7x7 -> 4x4
+            nn.Conv2d(8, 8, 3, stride=2, padding=1, groups=8, bias=False),
+            nn.BatchNorm2d(8),
+            nn.ReLU6(inplace=True),
+            nn.Conv2d(8, 16, 1, bias=False),
+            nn.BatchNorm2d(16),
+            nn.ReLU6(inplace=True),
+            
+            # Depthwise separable conv 3: 4x4
+            nn.Conv2d(16, 16, 3, stride=1, padding=1, groups=16, bias=False),
+            nn.BatchNorm2d(16),
+            nn.ReLU6(inplace=True),
+            nn.Conv2d(16, 32, 1, bias=False),
+            nn.BatchNorm2d(32),
+            nn.ReLU6(inplace=True),
+        )
+        
+        self.avgpool = nn.AdaptiveAvgPool2d(1)
+        self.classifier = nn.Linear(32, num_classes)
+    
+    def forward(self, x):
+        x = self.features(x)
+        x = self.avgpool(x)
+        x = x.view(x.size(0), -1)
+        x = self.classifier(x)
+        return x
+
+
+class MobileNetNano(nn.Module):
+    """Nano MobileNet - even smaller"""
+    
+    def __init__(self, num_classes=10):
+        super().__init__()
+        
+        self.model = nn.Sequential(
+            # Stem
+            nn.Conv2d(1, 4, 3, stride=2, padding=1),  # 28->14
+            nn.ReLU6(),
+            
+            # Block 1
+            nn.Conv2d(4, 4, 3, stride=2, padding=1, groups=4),  # 14->7
+            nn.ReLU6(),
+            nn.Conv2d(4, 8, 1),
+            nn.ReLU6(),
+            
+            # Block 2
+            nn.Conv2d(8, 8, 3, stride=2, padding=1, groups=8),  # 7->4
+            nn.ReLU6(),
+            nn.Conv2d(8, 16, 1),
+            nn.ReLU6(),
+            
+            # Global pooling and classification
+            nn.AdaptiveAvgPool2d(1),
+            nn.Flatten(),
+            nn.Linear(16, num_classes)
+        )
+    
+    def forward(self, x):
+        return self.model(x)
+
