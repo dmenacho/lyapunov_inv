@@ -331,7 +331,7 @@ def main():
         scales = np.random.uniform(0.1, 1)
         w_random = np.random.randn(stable_weights[i].shape[0]).astype(np.float32) * scales
         model = getattr(dynamic_models,args.target_model_name)().to(device)
-        set_model_weights(model, w_random)
+        set_model_weights(model, w_random, device)
         tr_loss, te_acc = train_one_run(model, train_loader, test_loader, n_epochs=n_epochs, lr=lr)
         losses_random.append(tr_loss)
         accs_random.append(te_acc)
