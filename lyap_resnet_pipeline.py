@@ -443,8 +443,8 @@ class StabilityConstrainedNN:
             V_vals.append(float(V.item()))
             V_grad = torch.autograd.grad(V.sum(), state, create_graph=False)[0]  # (1,D)
 
-            # grad_raw = grads_n[t]
-            grad_raw = gradients[t] # this is ∇L
+            grad_raw = grads_n[t]
+            # grad_raw = gradients[t] # this is ∇L
             f_raw = -grad_raw # f = -∇L
 
             if self.f_mean is not None and self.f_std is not None:
@@ -687,10 +687,10 @@ def find_stable_phase(args, ckpt_path: Path):
         alpha=args.alpha,
         constraint_threshold=args.constraint_threshold,
     )
-    if "x_mean" in stats and "x_std" in stats:
-        solver.set_normalization_stats(stats["x_mean"], stats["x_std"], stats.get("f_mean", None), stats.get("f_std", None))
-    else:
-        print("[stable] warning: no x_mean/x_std in checkpoint; using fallback normalization.")
+    # if "x_mean" in stats and "x_std" in stats:
+    #     solver.set_normalization_stats(stats["x_mean"], stats["x_std"], stats.get("f_mean", None), stats.get("f_std", None))
+    # else:
+    #     print("[stable] warning: no x_mean/x_std in checkpoint; using fallback normalization.")
 
     stable_weights, stable_meta = solver.discover_stable_initializations(
         n_samples=args.search_samples,
