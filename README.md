@@ -38,7 +38,6 @@ full_pipeline.py full --num_train_samples 1000 --num_trajectories 500 --traj_ste
 lyapunov_inv/
     
     ├── InvLyapunov_FirstVersion/
-    
         ├── data_generation_lyap.py
         ├── inverse.py
         ├── pinn_lyap.py
